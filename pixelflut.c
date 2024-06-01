@@ -15,7 +15,7 @@
 #include "pixelflut.h"
 
 static char *address = NULL;
-static char *host = NULL;
+static char *server = NULL;
 static char *port = NULL;
 static char *image = NULL;
 static char **cmds;
@@ -54,7 +54,7 @@ setup_connection(void)
 	localhints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
 	localhints.ai_protocol = 0;
 
-	if ((err = getaddrinfo(host, port, &hints, &res)) != 0) {
+	if ((err = getaddrinfo(server, port, &hints, &res)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s", gai_strerror(err));
 		exit(EXIT_FAILURE);
 	}
@@ -201,13 +201,13 @@ main(int argc, char *argv[])
 
 	char c;
 
-	while ((c = getopt(argc, argv, "a:h:p:f:x:y:t:")) != -1) {
+	while ((c = getopt(argc, argv, "a:s:p:f:x:y:t:h")) != -1) {
 		switch(c) {
 			case 'a':
 				address = optarg;
 				break;
-			case 'h':
-				host = optarg;
+			case 's':
+				server = optarg;
 				break;
 			case 'p':
 				port = optarg;
@@ -224,15 +224,16 @@ main(int argc, char *argv[])
 			case 't':
 				num_threads = strtol(optarg, NULL, 0);
 				break;
+			case 'h':
 			default: 
-				fprintf(stderr, "Usage: %s -a address -h host -p port -f file -x offset_x -y offset_y -t threads\n", argv[0]);
+				fprintf(stderr, "Usage: %s -a address -s server -p port -f file -x offset_x -y offset_y -t threads\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
 
-	if (address == NULL || host == NULL || port == NULL || image == NULL || offset_x == -1 || offset_y == -1) {
+	if (address == NULL || server == NULL || port == NULL || image == NULL || offset_x == -1 || offset_y == -1) {
 			fprintf(stderr, "Not all parameters were specified.\n");
-			fprintf(stderr, "Usage: %s -i interface -h host -p port -f file -x offset_x -y offset_y\n", argv[0]);
+			fprintf(stderr, "Usage: %s -a address -h server -p port -f file -x offset_x -y offset_y\n", argv[0]);
 			exit(EXIT_FAILURE);
 	}
 
