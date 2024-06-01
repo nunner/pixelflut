@@ -26,6 +26,7 @@ static int image_height = -1;
 static int num_threads = 1;
 
 static int quit = 0;
+static int cmd_count = 0;
 
 void
 handle_signal(int signal)
@@ -160,7 +161,8 @@ read_image(char *path)
 		for (int x = 0; x < image_width; x++) {
 			png_byte* ptr = &(row[x * 4]);			
 			if (ptr[3] != 0) {
-				asprintf(&cmds[y * image_width + x], "PX %d %d %02x%02x%02x\n", x, y, ptr[0], ptr[1], ptr[2]);
+				asprintf(&cmds[cmd_count], "PX %d %d %02x%02x%02x\n", x, y, ptr[0], ptr[1], ptr[2]);
+				cmd_count++;
 			}
 		}
 	}
@@ -181,10 +183,8 @@ send_pixels(void *ptr)
 	fprintf(f, "OFFSET %d %d\n", offset_x, offset_y);
 
 	while (!*args->quit) {
-		for (int i = args->from * image_width; i < args->to * image_width && i < image_width * image_height; i++) {
-			if (cmds[i] != NULL) {
-				fprintf(f, "%s", cmds[i]);
-			}
+		for (int i = args->from; i < args->to && i < cmd_count; i++) {
+			fprintf(f, "%s", cmds[i]);
 		}
 	}
 
@@ -240,13 +240,17 @@ main(int argc, char *argv[])
 
 	pthread_t threads[num_threads];
 	pixelflut_thread_args args[num_threads];
-	int steps = image_height/num_threads;
+	int steps = cmd_count/num_threads;
 
 	for (int i = 0; i < num_threads; i++) {
 		fprintf(stdout, "Starting thread %d\n", i);
 
 		args[i].from = i*steps;
-		args[i].to = (i+1)*steps;
+		if (i == num_threads-1) {
+			args[i].to = cmd_count;
+		} else {
+			args[i].to = (i+1)*steps;
+		}
 		args[i].offset_x = offset_x;
 		args[i].offset_y = offset_y;
 		args[i].quit = &quit;
@@ -254,6 +258,10 @@ main(int argc, char *argv[])
 	}
 
 	while(!quit) ;
+
+	for (int i = 0; i < num_threads; i++) {
+		pthread_join(threads[i], NULL);
+	}
 
 	return 0;
 }
