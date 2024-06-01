@@ -14,7 +14,7 @@
 
 #include "pixelflut.h"
 
-static char *interface = NULL;
+static char *address = NULL;
 static char *host = NULL;
 static char *port = NULL;
 static char *image = NULL;
@@ -38,8 +38,8 @@ setup_connection(void)
 {
 	int sockfd;
 	int err;
-	struct addrinfo hints;
-	struct addrinfo *res;
+	struct addrinfo hints, localhints;
+	struct addrinfo *res, *localaddr;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -47,13 +47,35 @@ setup_connection(void)
 	hints.ai_flags = 0;
 	hints.ai_protocol = 0;
 
+	memset(&localhints, 0, sizeof(hints));
+	localhints.ai_family = AF_INET;
+	localhints.ai_socktype = SOCK_STREAM;
+	localhints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
+	localhints.ai_protocol = 0;
+
 	if ((err = getaddrinfo(host, port, &hints, &res)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s", gai_strerror(err));
+		exit(EXIT_FAILURE);
+	}
+
+	if ((err = getaddrinfo(address, "0", &localhints, &localaddr)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s", gai_strerror(err));
 		exit(EXIT_FAILURE);
 	}
 
 	if ((sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1) {
 		fprintf(stderr, "socket: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	if (bind(sockfd, localaddr->ai_addr, localaddr->ai_addrlen) == -1) {
+		fprintf(stderr, "bind: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	const int enable = 1;
+	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) == -1) {
+		fprintf(stderr, "setsockopt: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -179,10 +201,10 @@ main(int argc, char *argv[])
 
 	char c;
 
-	while ((c = getopt(argc, argv, "i:h:p:f:x:y:t:")) != -1) {
+	while ((c = getopt(argc, argv, "a:h:p:f:x:y:t:")) != -1) {
 		switch(c) {
-			case 'i':
-				interface = optarg;
+			case 'a':
+				address = optarg;
 				break;
 			case 'h':
 				host = optarg;
@@ -203,12 +225,12 @@ main(int argc, char *argv[])
 				num_threads = strtol(optarg, NULL, 0);
 				break;
 			default: 
-				fprintf(stderr, "Usage: %s -i interface -h host -p port -f file -x offset_x -y offset_y -t threads\n", argv[0]);
+				fprintf(stderr, "Usage: %s -a address -h host -p port -f file -x offset_x -y offset_y -t threads\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
 
-	if (interface == NULL || host == NULL || port == NULL || image == NULL || offset_x == -1 || offset_y == -1) {
+	if (address == NULL || host == NULL || port == NULL || image == NULL || offset_x == -1 || offset_y == -1) {
 			fprintf(stderr, "Not all parameters were specified.\n");
 			fprintf(stderr, "Usage: %s -i interface -h host -p port -f file -x offset_x -y offset_y\n", argv[0]);
 			exit(EXIT_FAILURE);
