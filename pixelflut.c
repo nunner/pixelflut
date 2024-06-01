@@ -105,17 +105,17 @@ read_image(char *path)
 		exit(EXIT_FAILURE);
 	}
 
-    png_infop info_ptr;
+	png_infop info_ptr;
 	if ((info_ptr = png_create_info_struct(png_ptr)) == NULL) {
 		fprintf(stderr, "png_create_info_struct: %s", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
-    png_init_io(png_ptr, fp);
-    png_read_info(png_ptr, info_ptr);
+	png_init_io(png_ptr, fp);
+	png_read_info(png_ptr, info_ptr);
 
-    image_width = png_get_image_width(png_ptr, info_ptr);
-    image_height = png_get_image_height(png_ptr, info_ptr);
+	image_width = png_get_image_width(png_ptr, info_ptr);
+	image_height = png_get_image_height(png_ptr, info_ptr);
 
 	png_byte color_type = png_get_color_type(png_ptr, info_ptr);
 	png_byte bit_depth = png_get_bit_depth(png_ptr, info_ptr);
@@ -133,20 +133,20 @@ read_image(char *path)
 		png_set_tRNS_to_alpha(png_ptr);
 
 	if(color_type == PNG_COLOR_TYPE_RGB ||
-		color_type == PNG_COLOR_TYPE_GRAY ||
-		color_type == PNG_COLOR_TYPE_PALETTE)
+			color_type == PNG_COLOR_TYPE_GRAY ||
+			color_type == PNG_COLOR_TYPE_PALETTE)
 		png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
 
 	if(color_type == PNG_COLOR_TYPE_GRAY ||
-		color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+			color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
 		png_set_gray_to_rgb(png_ptr);
 
 	png_read_update_info(png_ptr, info_ptr);
 
 	png_bytepp row_pointers = (png_bytep*) malloc(sizeof(png_bytep) * image_height);
-    for (int i = 0; i < image_height; i += 1){
-        row_pointers[i] = (png_byte*) malloc(png_get_rowbytes(png_ptr, info_ptr));
-    }
+	for (int i = 0; i < image_height; i += 1){
+		row_pointers[i] = (png_byte*) malloc(png_get_rowbytes(png_ptr, info_ptr));
+	}
 
 	png_read_image(png_ptr, row_pointers);
 
