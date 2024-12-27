@@ -14,16 +14,11 @@
 
 #include "pixelflut.h"
 
-static char *address = NULL;
-static char *server = NULL;
-static char *port = NULL;
-static char *image = NULL;
 static char **cmds;
-static int offset_x = -1;
-static int offset_y = -1;
 static int image_width = -1;
 static int image_height = -1;
-static int num_threads = 1;
+
+static pixelflut_args_t *args;
 
 static int quit = 0;
 static int cmd_count = 0;
@@ -39,8 +34,8 @@ setup_connection(void)
 {
 	int sockfd;
 	int err;
-	struct addrinfo hints, localhints;
-	struct addrinfo *res, *localaddr;
+	struct addrinfo hints;
+	struct addrinfo *res;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -48,29 +43,13 @@ setup_connection(void)
 	hints.ai_flags = 0;
 	hints.ai_protocol = 0;
 
-	memset(&localhints, 0, sizeof(hints));
-	localhints.ai_family = AF_INET;
-	localhints.ai_socktype = SOCK_STREAM;
-	localhints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
-	localhints.ai_protocol = 0;
-
-	if ((err = getaddrinfo(server, port, &hints, &res)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s", gai_strerror(err));
-		exit(EXIT_FAILURE);
-	}
-
-	if ((err = getaddrinfo(address, "0", &localhints, &localaddr)) != 0) {
+	if ((err = getaddrinfo(args->server, args->port, &hints, &res)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s", gai_strerror(err));
 		exit(EXIT_FAILURE);
 	}
 
 	if ((sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1) {
 		fprintf(stderr, "socket: %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-
-	if (bind(sockfd, localaddr->ai_addr, localaddr->ai_addrlen) == -1) {
-		fprintf(stderr, "bind: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -180,7 +159,7 @@ send_pixels(void *ptr)
 		exit(EXIT_FAILURE);
 	}
 
-	fprintf(f, "OFFSET %d %d\n", offset_x, offset_y);
+	fprintf(f, "OFFSET %d %d\n", args->offset_x, args->offset_y);
 
 	while (!*args->quit) {
 		for (int i = args->from; i < args->to && i < cmd_count; i++) {
@@ -199,30 +178,31 @@ main(int argc, char *argv[])
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
 
+	args = calloc(1, sizeof(pixelflut_args_t));
+
+	args->num_threads = 1;
+
 	char c;
 
 	while ((c = getopt(argc, argv, "a:s:p:f:x:y:t:h")) != -1) {
 		switch(c) {
-			case 'a':
-				address = optarg;
-				break;
 			case 's':
-				server = optarg;
+				args->server = optarg;
 				break;
 			case 'p':
-				port = optarg;
+				args->port = optarg;
 				break;
 			case 'f':
-				image = optarg;
+				args->image = optarg;
 				break;
 			case 'x':
-				offset_x = strtol(optarg, NULL, 0);
+				args->offset_x = strtol(optarg, NULL, 0);
 				break;
 			case 'y':
-				offset_y = strtol(optarg, NULL, 0);
+				args->offset_y = strtol(optarg, NULL, 0);
 				break;
 			case 't':
-				num_threads = strtol(optarg, NULL, 0);
+				args->num_threads = strtol(optarg, NULL, 0);
 				break;
 			case 'h':
 			default: 
@@ -231,38 +211,40 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (address == NULL || server == NULL || port == NULL || image == NULL || offset_x == -1 || offset_y == -1) {
+	if (args->server == NULL || args->port == NULL || args->image == NULL) {
 			fprintf(stderr, "Not all parameters were specified.\n");
 			fprintf(stderr, "Usage: %s -a address -h server -p port -f file -x offset_x -y offset_y\n", argv[0]);
 			exit(EXIT_FAILURE);
 	}
 
-	read_image(image);
+	read_image(args->image);
 
-	pthread_t threads[num_threads];
-	pixelflut_thread_args args[num_threads];
-	int steps = cmd_count/num_threads;
+	pthread_t threads[args->num_threads];
+	pixelflut_thread_args thread_args[args->num_threads];
+	int steps = cmd_count/args->num_threads;
 
-	for (int i = 0; i < num_threads; i++) {
+	for (int i = 0; i < args->num_threads; i++) {
 		fprintf(stdout, "Starting thread %d\n", i);
 
-		args[i].from = i*steps;
-		if (i == num_threads-1) {
-			args[i].to = cmd_count;
+		thread_args[i].from = i*steps;
+		if (i == args->num_threads-1) {
+			thread_args[i].to = cmd_count;
 		} else {
-			args[i].to = (i+1)*steps;
+			thread_args[i].to = (i+1)*steps;
 		}
-		args[i].offset_x = offset_x;
-		args[i].offset_y = offset_y;
-		args[i].quit = &quit;
-		pthread_create(&threads[i], NULL, *send_pixels, &args[i]);
+		thread_args[i].offset_x = args->offset_x;
+		thread_args[i].offset_y = args->offset_y;
+		thread_args[i].quit = &quit;
+		pthread_create(&threads[i], NULL, *send_pixels, &thread_args[i]);
 	}
 
 	while(!quit) ;
 
-	for (int i = 0; i < num_threads; i++) {
+	for (int i = 0; i < args->num_threads; i++) {
 		pthread_join(threads[i], NULL);
 	}
+
+	free(args);
 
 	return 0;
 }
