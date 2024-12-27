@@ -238,7 +238,7 @@ main(int argc, char *argv[])
 		pthread_create(&threads[i], NULL, *send_pixels, &thread_args[i]);
 	}
 
-	while(!quit) ;
+	while(!quit) usleep(100000);
 
 	for (int i = 0; i < args->num_threads; i++) {
 		pthread_join(threads[i], NULL);
