@@ -6,13 +6,14 @@ LDFLAGS = -lpng -lpthread
 OBJECTS = pixelflut.o
 
 .PHONY: all clean
+
 all: pixelflut 
 
 pixelflut: $(OBJECTS)
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $^ $(LDFLAGS) -o $@ 
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $< $(CFLAGS) -c -o $@
 
 pixelflut.o: pixelflut.c pixelflut.h
 

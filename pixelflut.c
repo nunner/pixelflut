@@ -206,14 +206,14 @@ main(int argc, char *argv[])
 				break;
 			case 'h':
 			default: 
-				fprintf(stderr, "Usage: %s -a address -s server -p port -f file -x offset_x -y offset_y -t threads\n", argv[0]);
+				fprintf(stderr, "Usage: %s -s server -p port -f file [-x offset_x] [-y offset_y] [-t threads]\n", argv[0]);
 				exit(EXIT_FAILURE);
 		}
 	}
 
 	if (args->server == NULL || args->port == NULL || args->image == NULL) {
 			fprintf(stderr, "Not all parameters were specified.\n");
-			fprintf(stderr, "Usage: %s -a address -h server -p port -f file -x offset_x -y offset_y\n", argv[0]);
+			fprintf(stderr, "Usage: %s -s server -p port -f file [-x offset_x] [-y offset_y] [-t threads]\n", argv[0]);
 			exit(EXIT_FAILURE);
 	}
 
